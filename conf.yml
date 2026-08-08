@@ -1,0 +1,19 @@
+info:
+  name: "Better Server Filtering"
+  identifier: "betterserverfiltering"
+  description: "Replaces the admin dashboard's your/others toggle with an all-servers view, a filter select, and a sort select."
+  version: "1.0"
+  target: "beta-2026-01"
+  author: "Nicolas"
+  icon: "icon.png"
+
+admin:
+  view: "admin/view.blade.php"
+
+dashboard:
+  components: "components"
+
+requests:
+  app: "controllers"
+  routers:
+    client: "routes/client.php"
