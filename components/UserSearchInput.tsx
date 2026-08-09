@@ -24,7 +24,7 @@ export default ({ onSelect }: Props) => {
     }, [query]);
 
     return (
-        <div className={'relative flex-1 min-w-[16rem]'}>
+        <div className={'relative flex-1 min-w-[10rem]'}>
             <Input
                 className={'w-full'}
                 placeholder={'Search by username or email'}
