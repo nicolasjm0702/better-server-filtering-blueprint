@@ -10,25 +10,40 @@ import Pagination from '@/components/elements/Pagination';
 import FilterControls, { SortField, SortDir } from './FilterControls';
 import getFilteredServers, { Filter } from './api/getFilteredServers';
 
+const STORAGE_KEY = 'betterserverfiltering:filters';
+
+interface StoredFilters {
+    filter: Filter;
+    onlineFirst: boolean;
+    sortField: SortField;
+    sortDir: SortDir;
+}
+
+const loadStoredFilters = (): StoredFilters => {
+    try {
+        return { filter: 'all', onlineFirst: true, sortField: 'name', sortDir: 'asc', ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') };
+    } catch {
+        return { filter: 'all', onlineFirst: true, sortField: 'name', sortDir: 'asc' };
+    }
+};
+
 export default () => {
     const rootAdmin = useStoreState((state: ApplicationStore) => state.user.data?.rootAdmin ?? false);
 
-    const [filter, setFilter] = useState<Filter>('all');
-    const [onlineFirst, setOnlineFirst] = useState(true);
-    const [sortField, setSortField] = useState<SortField>('name');
-    const [sortDir, setSortDir] = useState<SortDir>('asc');
+    const [stored] = useState(loadStoredFilters);
+    const [filter, setFilter] = useState<Filter>(stored.filter);
+    const [onlineFirst, setOnlineFirst] = useState(stored.onlineFirst);
+    const [sortField, setSortField] = useState<SortField>(stored.sortField);
+    const [sortDir, setSortDir] = useState<SortDir>(stored.sortDir);
     const [userId, setUserId] = useState<number | null>(null);
     const [page, setPage] = useState(1);
     const [result, setResult] = useState<PaginatedResult<Server> | null>(null);
 
-    // Hide the legacy "Showing your/other's servers" toggle + its server list for
-    // admins. Blueprint's BeforeContent slot doesn't put this component as a plain
-    // CSS sibling of the toggle (a `~` sibling-selector rule proved insufficient
-    // live), so instead this walks up from the toggle's actual `<input
-    // name="show_all_servers">` (a stable attribute straight from panel source,
-    // not a generated class) and hides that wrapper plus everything rendered after
-    // it in the same parent — which is where the legacy Pagination's rows/pager
-    // land, since Pagination renders a bare Fragment rather than a wrapping element.
+    useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ filter, onlineFirst, sortField, sortDir }));
+    }, [filter, onlineFirst, sortField, sortDir]);
+
+    // Hide the legacy "Showing your/other's servers"
     useEffect(() => {
         if (!rootAdmin) return;
 
@@ -57,10 +72,6 @@ export default () => {
 
         scheduleHide();
 
-        // ponytail: body-level observer, debounced to one pass per animation frame —
-        // the legacy dashboard's own data refresh can re-render/re-add these nodes
-        // after our first pass. Scope to a narrower container if this ever shows up
-        // as a real perf cost; dashboard-page DOM sizes don't warrant it yet.
         const observer = new MutationObserver(scheduleHide);
         observer.observe(document.body, { childList: true, subtree: true });
 
@@ -81,8 +92,7 @@ export default () => {
             }
 
             // "Online first" needs live power state, which the paginated servers
-            // endpoint doesn't carry — fetch it per visible server, then stable-sort
-            // (online first, offline after, chosen sort order preserved within each group).
+            // endpoint doesn't carry
             Promise.all(
                 fetched.items.map((server) =>
                     getServerResourceUsage(server.uuid)
